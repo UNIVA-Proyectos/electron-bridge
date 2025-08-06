@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>CETMAR - Estado de Terminales</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 2em;
+        background: #f8f8f8;
+      }
+      #status {
+        font-size: 1.2em;
+        margin-bottom: 1em;
+      }
+      .ok {
+        color: #27ae60;
+      }
+      .error {
+        color: #c0392b;
+      }
+      .warn {
+        color: #f39c12;
+      }
+      pre {
+        background: #eee;
+        padding: 1em;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Estado de Terminales CETMAR</h2>
+    <div id="status"></div>
+    <div id="details"></div>
+    <h3>Terminales</h3>
+    <table
+      id="termTable"
+      border="1"
+      cellpadding="4"
+      style="background: #fff; border-collapse: collapse"
+    >
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>IP</th>
+          <th>Conexión</th>
+          <th>Recibidos</th>
+          <th>Última vez</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button onclick="manualSync()">Reintentar Sincronización</button>
+    <script src="renderer.js"></script>
+  </body>
+</html>
