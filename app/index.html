@@ -2,56 +2,60 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="index.css" />
     <title>CETMAR - Estado de Terminales</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        padding: 2em;
-        background: #f8f8f8;
-      }
-      #status {
-        font-size: 1.2em;
-        margin-bottom: 1em;
-      }
-      .ok {
-        color: #27ae60;
-      }
-      .error {
-        color: #c0392b;
-      }
-      .warn {
-        color: #f39c12;
-      }
-      pre {
-        background: #eee;
-        padding: 1em;
-      }
-    </style>
   </head>
   <body>
-    <h2>Estado de Terminales CETMAR</h2>
-    <div id="status"></div>
-    <div id="details"></div>
-    <h3>Terminales</h3>
-    <table
-      id="termTable"
-      border="1"
-      cellpadding="4"
-      style="background: #fff; border-collapse: collapse"
-    >
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>IP</th>
-          <th>Conexión</th>
-          <th>Recibidos</th>
-          <th>Última vez</th>
-          <th>Error</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <button onclick="manualSync()">Reintentar Sincronización</button>
+    <header>
+      <h1>Sistema de Monitoreo CETMAR</h1>
+    </header>
+
+    <div class="container">
+      <div class="status-bar" id="status-bar">
+        <div class="status-item" id="connection-status">
+          <span class="status-dot"></span>
+          <span>Estado de Conexión</span>
+        </div>
+        <div class="status-item" id="sync-status">
+          <span class="status-dot"></span>
+          <span>Sincronización</span>
+        </div>
+        <div class="status-item" id="terminal-count">
+          <span>Terminales Activos: <strong>0</strong></span>
+        </div>
+      </div>
+
+      <div id="status" class="status-section"></div>
+      <div id="details" class="details-section"></div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Estado de Terminales</h2>
+          <button class="btn btn-primary" onclick="manualSync()">
+            <span class="btn-icon">🔄</span>
+            Reintentar Sincronización
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table id="termTable">
+            <thead>
+              <tr>
+                <th>ID Terminal</th>
+                <th>Dirección IP</th>
+                <th>Estado</th>
+                <th>Datos Recibidos</th>
+                <th>Última Actividad</th>
+                <th>Observaciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <script src="renderer.js"></script>
   </body>
 </html>

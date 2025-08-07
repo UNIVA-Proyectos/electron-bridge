@@ -1,7 +1,7 @@
 const config = require("./config");
 const { pollDevices } = require("./deviceManager");
 const { saveLocalLog } = require("./offlineStorage");
-const { syncPendingLogs } = require("./syncService");
+const { syncPendingLogs, syncUsuarios } = require("./syncService");
 
 let status = {
   online: false,
@@ -30,6 +30,7 @@ function logError(err) {
 
 function startBridge() {
   status.online = true;
+  syncUsuarios();
   setInterval(async () => {
     status.polling = true;
     try {
