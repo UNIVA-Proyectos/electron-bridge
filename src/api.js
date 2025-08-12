@@ -68,6 +68,23 @@ function startBridge() {
     }
     status.syncing = false;
   }, config.syncIntervalMs);
+
+  // Intervalo de sincronización incremental de usuarios
+  // Ajusta el valor (ej. cada 10 minutos = 600000 ms, aquí 5 minutos como ejemplo)
+  setInterval(async () => {
+    try {
+      const anyConnected = status.terminals.some((t) => t.connected);
+      if (anyConnected) {
+        await syncUsuariosIncremental(status.terminals);
+      } else {
+        console.log(
+          "[UserSync] No hay dispositivos conectados, se pospone sincronización."
+        );
+      }
+    } catch (err) {
+      logError("UserSync: " + err.message);
+    }
+  }, 300000);
 }
 
 module.exports = { startBridge, getStatus };
