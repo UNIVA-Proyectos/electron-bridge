@@ -1,15 +1,17 @@
 const config = require("./config");
+const axios = require("axios");
 const { pollDevices } = require("./deviceManager");
 const { saveLocalLog } = require("./offlineStorage");
-const { syncPendingLogs, syncUsuarios } = require("./syncService");
+const { syncPendingLogs, SyncUsuariosTerm } = require("./syncService");
 
+let userSyncInstance = null;
 let status = {
   online: false,
   lastSync: null,
   errors: [],
   polling: false,
   syncing: false,
-  terminals: config.devices.map((d) => ({
+  terminals: config.TERMINALS.map((d) => ({
     id: d.id,
     ip: d.ip,
     connected: false,
@@ -30,7 +32,10 @@ function logError(err) {
 
 function startBridge() {
   status.online = true;
-  syncUsuarios();
+  if (!userSyncInstance) {
+    userSyncInstance = new SyncUsuariosTerm();
+  }
+
   setInterval(async () => {
     status.polling = true;
     try {
@@ -87,4 +92,21 @@ function startBridge() {
   }, 300000);
 }
 
-module.exports = { startBridge, getStatus };
+async function fetchAllUsers() {
+  const { data } = await axios.post(`${config.backendBaseUrl}/bridge/sync/all`);
+  console.log(
+    "[SYNC] Usuarios obtenidos del backend:",
+    data.usuarios || data.alumnos
+  );
+  return data.alumnos;
+}
+
+// Nueva: obtener solo los usuarios nuevos/modificados para sync incremental
+async function fetchChangedUsers(lastSync) {
+  const { data } = await axios.post(`${config.backendBaseUrl}/bridge/sync`, {
+    lastSync,
+  });
+  return data.alumnos;
+}
+
+module.exports = { startBridge, getStatus, fetchAllUsers, fetchChangedUsers };

@@ -32,10 +32,27 @@
       <div class="card">
         <div class="card-header">
           <h2>Estado de Terminales</h2>
-          <button class="btn btn-primary" onclick="manualSync()">
-            <span class="btn-icon">🔄</span>
-            Reintentar Sincronización
-          </button>
+          <div>
+            <button class="btn btn-primary" id="sync-btn">
+              <span class="btn-icon">🔄</span>
+              Sincronizar terminales (sólo una vez)
+            </button>
+            <button class="btn btn-primary" id="sync-incremental-btn" disabled>
+              <span class="btn-icon">🆕</span>
+              Buscar cambios
+            </button>
+            <button class="btn btn-primary" onclick="manualSync()">
+              <span class="btn-icon">🔁</span>
+              Reintentar Sincronización
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="sync-progress-container"
+          style="margin: 1rem 2rem 0 2rem; display: none"
+        >
+          <div id="sync-progress"></div>
         </div>
 
         <div class="table-responsive">
