@@ -10,6 +10,7 @@ let status = {
   lastSync: null,
   errors: [],
   polling: false,
+  recentLogs: [],
   syncing: false,
   terminals: config.TERMINALS.map((d) => ({
     id: d.id,
@@ -36,10 +37,13 @@ function startBridge() {
     userSyncInstance = new SyncUsuariosTerm();
   }
 
+  // Intervalo de Polling (Lectura de huellas)
   setInterval(async () => {
     status.polling = true;
     try {
       const { logs, deviceResults } = await pollDevices();
+
+      // Actualizar estado de conexión de las terminales
       for (const res of deviceResults) {
         const idx = status.terminals.findIndex((t) => t.id === res.id);
         if (idx !== -1) {
@@ -51,16 +55,36 @@ function startBridge() {
           }
         }
       }
-      for (const log of logs) {
-        saveLocalLog(log);
+
+      // Procesar los registros de asistencia encontrados
+      if (logs && logs.length > 0) {
+        for (const log of logs) {
+          saveLocalLog(log); // Guardar en archivo local (lógica original)
+
+          // --- NUEVO: Agregar a la lista para mostrar en pantalla ---
+          status.recentLogs.unshift({
+            id: log.user_id,
+            time: log.record_time,
+            device: log.ip || "Terminal", // Asumiendo que pollDevices adjunta la IP
+          });
+          // ---------------------------------------------------------
+        }
+
+        // --- NUEVO: Mantener solo los últimos 10 registros en memoria ---
+        if (status.recentLogs.length > 10) {
+          status.recentLogs = status.recentLogs.slice(0, 10);
+        }
+        // ----------------------------------------------------------------
+
+        status.lastSync = new Date().toLocaleString();
       }
-      status.lastSync = new Date().toLocaleString();
     } catch (err) {
       logError("Polling: " + err.message);
     }
     status.polling = false;
   }, config.pollIntervalMs);
 
+  // Intervalo de Sincronización con Backend (Subida de datos)
   setInterval(async () => {
     status.syncing = true;
     try {
@@ -75,7 +99,6 @@ function startBridge() {
   }, config.syncIntervalMs);
 
   // Intervalo de sincronización incremental de usuarios
-  // Ajusta el valor (ej. cada 10 minutos = 600000 ms, aquí 5 minutos como ejemplo)
   setInterval(async () => {
     try {
       const anyConnected = status.terminals.some((t) => t.connected);
@@ -83,7 +106,7 @@ function startBridge() {
         await syncUsuariosIncremental(status.terminals);
       } else {
         console.log(
-          "[UserSync] No hay dispositivos conectados, se pospone sincronización."
+          "[UserSync] No hay dispositivos conectados, se pospone sincronización.",
         );
       }
     } catch (err) {
@@ -93,20 +116,22 @@ function startBridge() {
 }
 
 async function fetchAllUsers() {
-  const { data } = await axios.post(`${config.backendBaseUrl}/bridge/sync/all`);
-  console.log(
-    "[SYNC] Usuarios obtenidos del backend:",
-    data.usuarios || data.alumnos
-  );
-  return data.alumnos;
+  const { data } = await axios.get(`${config.backendBaseUrl}/bridge/sync/all`);
+  console.log("[SYNC] Usuarios obtenidos del backend:", data.usuarios);
+  return data.usuarios;
 }
 
 // Nueva: obtener solo los usuarios nuevos/modificados para sync incremental
 async function fetchChangedUsers(lastSync) {
-  const { data } = await axios.post(`${config.backendBaseUrl}/bridge/sync`, {
+  const { data } = await axios.get(`${config.backendBaseUrl}/bridge/sync`, {
     lastSync,
   });
   return data.alumnos;
 }
 
-module.exports = { startBridge, getStatus, fetchAllUsers, fetchChangedUsers };
+module.exports = {
+  startBridge,
+  getStatus: () => status,
+  fetchAllUsers,
+  fetchChangedUsers,
+};

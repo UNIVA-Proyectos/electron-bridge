@@ -5,18 +5,22 @@ const termTableBody = document.querySelector("#termTable tbody");
 const connectionStatusEl = document.getElementById("connection-status");
 const syncStatusEl = document.getElementById("sync-status");
 const terminalCountEl = document.getElementById("terminal-count");
+
+// Referencias para la Sincronización
 const syncBtn = document.getElementById("sync-btn");
 const syncIncrementalBtn = document.getElementById("sync-incremental-btn");
 const syncProgressDiv = document.getElementById("sync-progress");
 const syncProgressContainer = document.getElementById(
-  "sync-progress-container"
+  "sync-progress-container",
 );
+
+// Referencia para la Lista de Asistencias (NUEVO)
+const attendanceList = document.getElementById("attendance-list");
 
 let syncInProgress = false;
 
-// Actualiza la barra de estado como antes...
+// Actualiza la barra superior de estado
 function updateStatusBar(status) {
-  // ... (igual que en tu código original)
   const connectionDot = connectionStatusEl.querySelector(".status-dot");
   const connectionText = connectionStatusEl.querySelector("span:last-child");
 
@@ -59,16 +63,18 @@ function updateStatusBar(status) {
   `;
 }
 
+// Función principal que recibe el estado desde el Main Process
 function setStatus(status) {
   updateStatusBar(status);
 
-  // ... resto igual que antes ...
+  // Actualizar mensaje de estado general
   if (status.online) {
     statusDiv.innerHTML = '<div class="alert success">✅ Servicio Activo</div>';
   } else {
     statusDiv.innerHTML = '<div class="alert">❌ Servicio Detenido</div>';
   }
 
+  // Actualizar panel de detalles
   let html = "";
   html += `<div class="card">
     <div style="padding: 1.5rem;">
@@ -89,7 +95,7 @@ function setStatus(status) {
     html += `<div class="alert">
       <strong>Errores del sistema:</strong>
       <pre style="margin-top: 0.5rem; padding: 1rem; background: rgba(220, 38, 38, 0.1); border-radius: 6px;">${status.errors.join(
-        "\n"
+        "\n",
       )}</pre>
     </div>`;
   }
@@ -97,6 +103,7 @@ function setStatus(status) {
   html += "</div></div>";
   detailsDiv.innerHTML = html;
 
+  // Actualizar Tabla de Terminales
   if (Array.isArray(status.terminals)) {
     termTableBody.innerHTML = status.terminals
       .map((t) => {
@@ -138,14 +145,36 @@ function setStatus(status) {
     termTableBody.innerHTML =
       '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No hay terminales disponibles</td></tr>';
   }
+
+  // --- NUEVA LÓGICA: Actualizar Lista de Registros Recientes ---
+  if (attendanceList) {
+    if (status.recentLogs && status.recentLogs.length > 0) {
+      attendanceList.innerHTML = status.recentLogs
+        .map((log) => {
+          const time = new Date(log.time).toLocaleTimeString();
+          return `
+          <li style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+            <span>👤 ID: <strong>${log.id}</strong></span>
+            <span>🕒 ${time}</span>
+            <span style="color: #888; font-size: 0.9em;">(${log.device})</span>
+          </li>
+        `;
+        })
+        .join("");
+    } else {
+      attendanceList.innerHTML =
+        '<li style="padding: 10px; color: #666;"><em>Esperando lecturas...</em></li>';
+    }
+  }
 }
 
-// ------------- NUEVA LÓGICA DE BOTONES Y PROGRESO -------------
+// ------------- LÓGICA DE BOTONES Y PROGRESO DE SYNC -------------
 
 async function checkSyncStatus() {
-  // Consulta el log de sincronización al backend (main process)
+  // Consulta el log de sincronización al backend
   const log = await window.bridgeApi.invoke("get-sync-log");
-  if (log.fullSyncCompleted) {
+
+  if (log && log.fullSyncCompleted) {
     syncBtn.disabled = true;
     syncIncrementalBtn.disabled = false;
     syncBtn.innerHTML =
@@ -160,10 +189,12 @@ async function checkSyncStatus() {
     syncIncrementalBtn.innerHTML =
       '<span class="btn-icon">🆕</span>Buscar cambios';
   }
+
   syncProgressDiv.innerHTML = "";
   syncProgressContainer.style.display = "none";
 }
 
+// Evento: Botón Sincronización Completa
 syncBtn.onclick = async () => {
   if (syncInProgress) return;
   syncInProgress = true;
@@ -174,6 +205,7 @@ syncBtn.onclick = async () => {
   await window.bridgeApi.invoke("start-sync");
 };
 
+// Evento: Botón Sincronización Incremental
 syncIncrementalBtn.onclick = async () => {
   if (syncInProgress) return;
   syncInProgress = true;
@@ -185,32 +217,44 @@ syncIncrementalBtn.onclick = async () => {
   await window.bridgeApi.invoke("start-incremental-sync");
 };
 
+// Listener para el progreso de sincronización
 window.bridgeApi.on("sync-progress", (_event, progress) => {
-  // Mostrar progreso por terminal y chunk
   const { totalChunks, terminals } = progress;
   let html = "<strong>Progreso de sincronización:</strong><br>";
-  terminals.forEach((t) => {
-    html += `<div>${t.id}: ${t.currentChunk}/${totalChunks} (${t.status})</div>`;
-  });
+
+  if (terminals) {
+    terminals.forEach((t) => {
+      html += `<div>${t.id}: ${t.currentChunk}/${totalChunks} (${t.status})</div>`;
+    });
+  }
+
   syncProgressDiv.innerHTML = html;
   syncProgressContainer.style.display = "block";
-  if (terminals.every((t) => t.status === "complete")) {
+
+  if (terminals && terminals.every((t) => t.status === "complete")) {
     syncInProgress = false;
+    // Restaurar botones
     syncBtn.innerHTML =
       '<span class="btn-icon">🔄</span>Sincronizar terminales (sólo una vez)';
     syncIncrementalBtn.innerHTML =
       '<span class="btn-icon">🆕</span>Buscar cambios';
+
     checkSyncStatus();
+
     setTimeout(() => {
       syncProgressContainer.style.display = "none";
       syncProgressDiv.innerHTML = "";
     }, 3000);
+
     showNotification("Sincronización completada", "success");
   }
 });
 
 function manualSync() {
   const button = document.querySelector('button[onclick="manualSync()"]');
+  // Pequeña protección si el botón no se encuentra por alguna razón
+  if (!button) return;
+
   const originalText = button.innerHTML;
   button.innerHTML = '<span class="btn-icon">⏳</span> Sincronizando...';
   button.disabled = true;
@@ -233,6 +277,8 @@ function showNotification(message, type = "info") {
     animation: slideIn 0.3s ease-out;
   `;
   notification.innerHTML = message;
+
+  // Inyectar estilos si no existen
   if (!document.getElementById("notification-styles")) {
     const styles = document.createElement("style");
     styles.id = "notification-styles";
@@ -248,7 +294,9 @@ function showNotification(message, type = "info") {
     `;
     document.head.appendChild(styles);
   }
+
   document.body.appendChild(notification);
+
   setTimeout(() => {
     notification.style.animation = "slideOut 0.3s ease-in";
     setTimeout(() => notification.remove(), 300);
@@ -259,6 +307,8 @@ function showNotification(message, type = "info") {
 window.bridgeApi.getStatus().then(setStatus);
 window.bridgeApi.onStatusUpdate(setStatus);
 checkSyncStatus();
+
+// Polling de estado UI (backup por si no llega el evento)
 setInterval(() => {
   window.bridgeApi.getStatus().then(setStatus);
   checkSyncStatus();

@@ -89,7 +89,7 @@ async function pushUsersToDevice(device, users, options = {}) {
   return withDeviceConnection(device, async (zk) => {
     if (logProgress) {
       console.log(
-        `[Device ${device.id}] Enviando ${users.length} usuarios (alta/actualización)`
+        `[Device ${device.id}] Enviando ${users.length} usuarios (alta/actualización)`,
       );
     }
 
@@ -116,7 +116,7 @@ async function pushUsersToDevice(device, users, options = {}) {
             mapped.userid,
             mapped.name,
             mapped.password,
-            mapped.role
+            mapped.role,
           );
         } else if (typeof zk.addUser === "function") {
           // Alternativa si la librería expone addUser
@@ -125,18 +125,18 @@ async function pushUsersToDevice(device, users, options = {}) {
             mapped.userid,
             mapped.name,
             mapped.password,
-            mapped.role
+            mapped.role,
           );
         } else {
           throw new Error(
-            "No se encontró método setUser/addUser en la librería node-zklib"
+            "No se encontró método setUser/addUser en la librería node-zklib",
           );
         }
         ok++;
       } catch (err) {
         fail++;
         console.error(
-          `[Device ${device.id}] Error usuario ${mapped.userid}: ${err.message}`
+          `[Device ${device.id}] Error usuario ${mapped.userid}: ${err.message}`,
         );
       }
       if (perUserDelayMs) {
@@ -154,7 +154,7 @@ async function pushUsersToDevice(device, users, options = {}) {
 
     if (logProgress) {
       console.log(
-        `[Device ${device.id}] Usuarios procesados: OK=${ok}, FAIL=${fail}`
+        `[Device ${device.id}] Usuarios procesados: OK=${ok}, FAIL=${fail}`,
       );
     }
 
@@ -178,7 +178,7 @@ async function removeUsersFromDevice(device, users, options = {}) {
   return withDeviceConnection(device, async (zk) => {
     if (logProgress) {
       console.log(
-        `[Device ${device.id}] Eliminando ${users.length} usuarios (inactivos)`
+        `[Device ${device.id}] Eliminando ${users.length} usuarios (inactivos)`,
       );
     }
 
@@ -203,14 +203,14 @@ async function removeUsersFromDevice(device, users, options = {}) {
           await zk.deleteUser(mapped.uid);
         } else {
           throw new Error(
-            "No se encontró método removeUser/deleteUser en la librería node-zklib"
+            "No se encontró método removeUser/deleteUser en la librería node-zklib",
           );
         }
         ok++;
       } catch (err) {
         fail++;
         console.error(
-          `[Device ${device.id}] Error eliminando ${mapped.userid}: ${err.message}`
+          `[Device ${device.id}] Error eliminando ${mapped.userid}: ${err.message}`,
         );
       }
       if (perUserDelayMs) {
@@ -228,7 +228,7 @@ async function removeUsersFromDevice(device, users, options = {}) {
 
     if (logProgress) {
       console.log(
-        `[Device ${device.id}] Eliminación completada: OK=${ok}, FAIL=${fail}`
+        `[Device ${device.id}] Eliminación completada: OK=${ok}, FAIL=${fail}`,
       );
     }
 
@@ -250,7 +250,7 @@ async function pollDevices() {
   let allLogs = [];
   let deviceResults = [];
 
-  for (const dev of config.devices) {
+  for (const dev of config.TERMINALS) {
     const port = dev.port || 4370;
     const zk = new ZKLib(dev.ip, port, 10000, 4000);
     let connected = false;
@@ -259,11 +259,15 @@ async function pollDevices() {
 
     try {
       await zk.createSocket();
+      console.log(`Conexión exitosa con terminal ${dev.ip}`);
       connected = true;
 
       // Obtiene asistencias
       const logs = await zk.getAttendances();
       if (logs && Array.isArray(logs.data) && logs.data.length > 0) {
+        console.log(
+          `[DEBUG] Registros encontrados en terminal: ${logs.data.length}`,
+        );
         recordsCount = logs.data.length;
         allLogs = allLogs.concat(
           logs.data.map((e) => ({
@@ -271,13 +275,14 @@ async function pollDevices() {
             timestamp: e.timestamp ? e.timestamp : new Date().toISOString(),
             status: e.type,
             device: dev.id,
-          }))
+          })),
         );
       }
 
       // Si quieres limpiar logs luego de leerlos (opcional):
       // await zk.clearAttendanceLog();
     } catch (err) {
+      console.error(`Error de conexión Wi-Fi con ${dev.ip}: ${err.message}`);
       error = err.message;
     } finally {
       if (connected) {

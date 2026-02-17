@@ -8,18 +8,50 @@ const api = require("./api");
 async function syncPendingLogs() {
   const logs = getPendingLogs();
   let errors = [];
+
   for (const log of logs) {
     try {
-      await axios.post(`${config.backendBaseUrl}/bridge/access-logs`, log, {});
+      // --- TRANSFORMACIÓN DE DATOS ---
+      // Convertimos el formato de ZK (userId, status) al formato del Backend (alumno_id, es_entrada)
+      const payload = {
+        alumno_id: log.userId, // Mapeamos userId -> alumno_id
+        es_entrada: true, // Valor por defecto
+        timestamp: log.timestamp, // Enviamos la fecha original
+      };
+
+      // Lógica para determinar si es entrada o salida basado en el estado de la terminal
+      // 0/4 = Entrada, 1/5 = Salida
+      if (log.status !== undefined && log.status !== null) {
+        const s = Number(log.status);
+        if (s === 1 || s === 5) {
+          payload.es_entrada = false;
+        }
+      }
+      // -------------------------------
+
+      await axios.post(
+        `${config.backendBaseUrl}/bridge/access-logs`,
+        payload,
+        {},
+      );
       removeLogFile(log._filename);
+      console.log(`[SYNC] Log sincronizado correctamente: ${log.userId}`);
     } catch (e) {
-      errors.push(`Sync log ${log._filename}: ${e.message}`);
+      // Si el error es del servidor, mostramos detalle
+      const msg =
+        e.response && e.response.data
+          ? JSON.stringify(e.response.data)
+          : e.message;
+      errors.push(`Sync log ${log._filename}: ${msg}`);
+      console.error(`[SYNC ERROR] ${msg}`);
     }
   }
   return errors;
 }
 
 // --------- USUARIOS: SYNC TO TERMINALS ---------
+// (El resto del archivo se mantiene igual, pero te lo incluyo para que esté completo si copias todo)
+
 function chunkArray(array, size) {
   const result = [];
   for (let i = 0; i < array.length; i += size) {
@@ -147,7 +179,6 @@ class SyncUsuariosTerm {
   }
 }
 
-// --------- EXPORTS ---------
 module.exports = {
   syncPendingLogs,
   SyncUsuariosTerm,
