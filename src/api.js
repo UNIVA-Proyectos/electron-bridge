@@ -3,6 +3,7 @@ const axios = require("axios");
 const { pollDevices } = require("./deviceManager");
 const { saveLocalLog } = require("./offlineStorage");
 const { syncPendingLogs, SyncUsuariosTerm } = require("./syncService");
+const { syncUsuariosIncremental } = require("./userSync");
 
 let userSyncInstance = null;
 let status = {
@@ -63,9 +64,9 @@ function startBridge() {
 
           // --- NUEVO: Agregar a la lista para mostrar en pantalla ---
           status.recentLogs.unshift({
-            id: log.user_id,
-            time: log.record_time,
-            device: log.ip || "Terminal", // Asumiendo que pollDevices adjunta la IP
+            id: log.userId,
+            time: log.timestamp,
+            device: log.device || "Terminal", // pollDevices adjunta device
           });
           // ---------------------------------------------------------
         }
@@ -124,14 +125,14 @@ async function fetchAllUsers() {
 // Nueva: obtener solo los usuarios nuevos/modificados para sync incremental
 async function fetchChangedUsers(lastSync) {
   const { data } = await axios.get(`${config.backendBaseUrl}/bridge/sync`, {
-    lastSync,
+    params: { lastSync },
   });
   return data.alumnos;
 }
 
 module.exports = {
   startBridge,
-  getStatus: () => status,
+  getStatus,
   fetchAllUsers,
   fetchChangedUsers,
 };

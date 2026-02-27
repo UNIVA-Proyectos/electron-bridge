@@ -261,7 +261,22 @@ async function pollDevices() {
       await zk.createSocket();
       console.log(`Conexión exitosa con terminal ${dev.ip}`);
       connected = true;
+    } catch (err) {
+      const errMsg =
+        err instanceof Error ? err.message : JSON.stringify(err) || String(err);
+      console.error(`[Poll] Error de conexión con ${dev.ip}: ${errMsg}`);
+      error = errMsg;
+      deviceResults.push({
+        id: dev.id,
+        ip: dev.ip,
+        connected,
+        recordsCount,
+        error,
+      });
+      continue; // No intenta leer si no pudo conectar
+    }
 
+    try {
       // Obtiene asistencias
       const logs = await zk.getAttendances();
       if (logs && Array.isArray(logs.data) && logs.data.length > 0) {
@@ -282,15 +297,17 @@ async function pollDevices() {
       // Si quieres limpiar logs luego de leerlos (opcional):
       // await zk.clearAttendanceLog();
     } catch (err) {
-      console.error(`Error de conexión Wi-Fi con ${dev.ip}: ${err.message}`);
-      error = err.message;
+      const errMsg =
+        err instanceof Error ? err.message : JSON.stringify(err) || String(err);
+      console.error(
+        `[Poll] Conexión OK pero error al leer asistencias de ${dev.ip}: ${errMsg}`,
+      );
+      error = errMsg;
     } finally {
-      if (connected) {
-        try {
-          await zk.disconnect();
-        } catch {
-          /* ignore */
-        }
+      try {
+        await zk.disconnect();
+      } catch {
+        /* ignore */
       }
     }
 
