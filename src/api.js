@@ -3,7 +3,6 @@ const axios = require("axios");
 const { pollDevices } = require("./deviceManager");
 const { saveLocalLog } = require("./offlineStorage");
 const { syncPendingLogs, SyncUsuariosTerm } = require("./syncService");
-const { syncUsuariosIncremental } = require("./userSync");
 
 let userSyncInstance = null;
 let status = {
@@ -52,7 +51,7 @@ function startBridge() {
           status.terminals[idx].lastError = res.error || null;
           status.terminals[idx].lastRecordsCount = res.recordsCount || 0;
           if (res.recordsCount > 0) {
-            status.terminals[idx].lastReceived = new Date().toLocaleString();
+            status.terminals[idx].lastReceived = new Date().toISOString();
           }
         }
       }
@@ -66,7 +65,7 @@ function startBridge() {
           status.recentLogs.unshift({
             id: log.userId,
             time: log.timestamp,
-            device: log.device || "Terminal", // pollDevices adjunta device
+            device: log.device,
           });
           // ---------------------------------------------------------
         }
@@ -125,14 +124,14 @@ async function fetchAllUsers() {
 // Nueva: obtener solo los usuarios nuevos/modificados para sync incremental
 async function fetchChangedUsers(lastSync) {
   const { data } = await axios.get(`${config.backendBaseUrl}/bridge/sync`, {
-    params: { lastSync },
+    lastSync,
   });
   return data.alumnos;
 }
 
 module.exports = {
   startBridge,
-  getStatus,
+  getStatus: () => status,
   fetchAllUsers,
   fetchChangedUsers,
 };

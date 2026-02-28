@@ -5,7 +5,5 @@ contextBridge.exposeInMainWorld("bridgeApi", {
   onStatusUpdate: (cb) =>
     ipcRenderer.on("status-update", (event, status) => cb(status)),
   invoke: (channel, data) => ipcRenderer.invoke(channel, data),
-  on: (channel, func) => {
-    ipcRenderer.on(channel, (event, ...args) => func(event, ...args));
-  },
+  on: (channel, func) => ipcRenderer.on(channel, (event, ...args) => func(event, ...args)),
 });

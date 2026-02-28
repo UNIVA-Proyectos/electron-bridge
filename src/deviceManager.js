@@ -261,22 +261,7 @@ async function pollDevices() {
       await zk.createSocket();
       console.log(`Conexión exitosa con terminal ${dev.ip}`);
       connected = true;
-    } catch (err) {
-      const errMsg =
-        err instanceof Error ? err.message : JSON.stringify(err) || String(err);
-      console.error(`[Poll] Error de conexión con ${dev.ip}: ${errMsg}`);
-      error = errMsg;
-      deviceResults.push({
-        id: dev.id,
-        ip: dev.ip,
-        connected,
-        recordsCount,
-        error,
-      });
-      continue; // No intenta leer si no pudo conectar
-    }
 
-    try {
       // Obtiene asistencias
       const logs = await zk.getAttendances();
       if (logs && Array.isArray(logs.data) && logs.data.length > 0) {
@@ -286,9 +271,9 @@ async function pollDevices() {
         recordsCount = logs.data.length;
         allLogs = allLogs.concat(
           logs.data.map((e) => ({
-            userId: e.userId,
-            timestamp: e.timestamp ? e.timestamp : new Date().toISOString(),
-            status: e.type,
+            userId: e.deviceUserId || e.userSn || e.userId || "unknown",
+            timestamp: e.recordTime || e.timestamp || new Date().toISOString(),
+            status: e.state !== undefined ? e.state : e.type,
             device: dev.id,
           })),
         );
@@ -297,17 +282,15 @@ async function pollDevices() {
       // Si quieres limpiar logs luego de leerlos (opcional):
       // await zk.clearAttendanceLog();
     } catch (err) {
-      const errMsg =
-        err instanceof Error ? err.message : JSON.stringify(err) || String(err);
-      console.error(
-        `[Poll] Conexión OK pero error al leer asistencias de ${dev.ip}: ${errMsg}`,
-      );
-      error = errMsg;
+      console.error(`Error de conexión Wi-Fi con ${dev.ip}: ${err.message}`);
+      error = err.message;
     } finally {
-      try {
-        await zk.disconnect();
-      } catch {
-        /* ignore */
+      if (connected) {
+        try {
+          await zk.disconnect();
+        } catch {
+          /* ignore */
+        }
       }
     }
 
